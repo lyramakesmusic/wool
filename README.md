@@ -1,4 +1,4 @@
-# loom
+# wool
 
 A tree-based completion explorer for base LLMs. Generate multiple completions simultaneously, branch from any node, and navigate through possibility space on an infinite canvas. Flask backend with vanilla JavaScript frontend - no setup friction, just branches and text.
 
@@ -97,4 +97,5 @@ Tree state is automatically saved to `tree_state.json` on the server. Your explo
 ## Contributing
 
 Contributions are welcome! Feel free to submit issues and pull requests.
+
 
