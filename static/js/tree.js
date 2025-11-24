@@ -90,7 +90,7 @@ function calculateSiblingPositions(parentNode, siblingCount) {
 
 // path string for SVG bezier curve (calculate node dimensions dynamically)
 function generateSpline(parentNode, childNode) {
-  const CHARS_PER_LINE = 42;
+  const CHARS_PER_LINE = 36;
   const LINE_HEIGHT = 18;
   const PADDING = 12;
   const FIXED_WIDTH = 280;

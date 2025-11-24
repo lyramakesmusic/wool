@@ -68,7 +68,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
   const PADDING = 12; // Same padding all around
   const FIXED_WIDTH = node.isGhost ? 50 : 280; // Ghost nodes are very thin
   const MIN_HEIGHT = node.isGhost ? 30 : 50;
-  const CHARS_PER_LINE = node.isGhost ? 4 : 42; // Fits in width with padding
+  const CHARS_PER_LINE = node.isGhost ? 4 : 36; // Fits in width with padding (280-24)/~7px per char
   
   // wrap text and calculate dimensions
   let displayText = node.text || (node.loading ? '⟳ generating...' : '');
@@ -205,8 +205,15 @@ function renderNode(node, isFocused, isOnFocusedPath) {
     g.appendChild(plusGroup);
   }
   
-  // dragging and interactions (skip for ghost nodes)
+  // ghost nodes only get click handler to expand
   if (node.isGhost) {
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Extract parent id from ghost id (format: ghost-${parent.id})
+      const parentId = node.id.replace('ghost-', '');
+      handleNodeClick(parentId);
+    });
+    g.style.cursor = 'pointer';
     return g;
   }
   
@@ -358,7 +365,7 @@ function renderTree() {
         const PARENT_PADDING = 12;
         const PARENT_LINE_HEIGHT = 18;
         const PARENT_MIN_HEIGHT = 50;
-        const PARENT_CHARS_PER_LINE = 42;
+        const PARENT_CHARS_PER_LINE = 36;
         
         // Calculate parent height
         const parentText = node.text || '';
@@ -534,6 +541,50 @@ function showViewAsPopup(node) {
   // Close on backdrop click
   popup.addEventListener('click', (e) => {
     if (e.target === popup) popup.remove();
+  });
+  
+  // Make draggable via header
+  const container = popup.querySelector('.popup-container');
+  const header = popup.querySelector('.popup-header');
+  let isDragging = false;
+  let startX, startY, startLeft, startTop;
+  
+  header.style.cursor = 'grab';
+  header.style.userSelect = 'none';
+  
+  header.addEventListener('mousedown', (e) => {
+    // Don't drag if clicking on buttons
+    if (e.target.closest('button') || e.target.closest('.btn-icon')) return;
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const rect = container.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    container.style.position = 'fixed';
+    container.style.left = (startLeft + dx) + 'px';
+    container.style.top = (startTop + dy) + 'px';
+    container.style.transform = 'none';
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      header.style.cursor = 'grab';
+    }
   });
 }
 

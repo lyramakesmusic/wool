@@ -17,6 +17,57 @@ body.dark-mode {
   background: #1A1A1A;
 }
 
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F5F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CCCCCC;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #AAAAAA;
+}
+
+::-webkit-scrollbar-corner {
+  background: #F5F5F5;
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #CCCCCC #F5F5F5;
+}
+
+/* Dark mode scrollbars */
+body.dark-mode ::-webkit-scrollbar-track {
+  background: #2A2A2A;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: #555555;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #666666;
+}
+
+body.dark-mode ::-webkit-scrollbar-corner {
+  background: #2A2A2A;
+}
+
+body.dark-mode * {
+  scrollbar-width: thin;
+  scrollbar-color: #555555 #2A2A2A;
+}
+
 #canvas {
   display: block;
   background: #E8DCC8;
@@ -116,7 +167,9 @@ body.dark-mode .node.focused-path .node-bg {
 .node-text {
   font-size: 13px;
   fill: #2A2A2A;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: "IBM Plex Serif", serif;
+  font-weight: 400;
+  font-style: normal;
   pointer-events: none;
   user-select: none;
 }
@@ -283,12 +336,16 @@ body.dark-mode .hover-btn-icon {
   width: 700px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .view-as-large .popup-content {
   flex: 1;
-  overflow-y: auto;
-  max-height: 80vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes slideUp {
@@ -357,7 +414,7 @@ body.dark-mode .popup-close:hover {
 }
 
 .popup-content {
-  padding: 24px;
+  padding: 12px;
 }
 
 .popup-content p {
@@ -376,7 +433,7 @@ body.dark-mode .popup-content p {
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 20px;
-  font-family: Georgia, serif;
+  font-family: "IBM Plex Serif", serif;
   font-size: 13px;
   color: #2A2A2A;
   max-height: 100px;
@@ -395,7 +452,7 @@ body.dark-mode .node-preview {
   padding: 12px;
   border: 1px solid #E0E0E0;
   border-radius: 6px;
-  font-family: Georgia, serif;
+  font-family: "IBM Plex Serif", serif;
   font-size: 15px;
   color: #2A2A2A;
   resize: vertical;
@@ -414,16 +471,20 @@ body.dark-mode .node-edit-textarea {
 }
 
 .tree-content-display {
-  font-family: Georgia, serif;
+  font-family: "IBM Plex Serif", serif;
   font-size: 16px;
   line-height: 1.8;
   color: rgba(42, 42, 42, 0.75);
   white-space: pre-wrap;
   word-wrap: break-word;
-  max-height: 80vh;
+  flex: 1;
   overflow-y: auto;
-  max-width: 600px;
-  margin: 0 auto;
+  width: calc(100% - 20px);
+  margin: 0 10px;
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 24px 36px 24px 24px;
+  padding-right: 36px;
 }
 
 body.dark-mode .tree-content-display {
@@ -522,7 +583,7 @@ body.dark-mode .edge.focused-path {
   position: fixed;
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 24px;
+  padding: 16px;
   z-index: 1000;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   will-change: transform;
@@ -536,7 +597,7 @@ body.dark-mode .floating-panel {
 }
 
 #settings-panel {
-  width: 290px;
+  width: 260px;
   top: 20px;
   left: 20px;
   border-radius: 12px;
@@ -551,13 +612,15 @@ body.dark-mode #settings-panel {
   font-size: 14px;
   font-weight: 600;
   color: #333333;
-  margin-bottom: 24px;
   cursor: grab;
   user-select: none;
   letter-spacing: -0.01em;
   text-transform: uppercase;
   font-size: 11px;
   opacity: 0.7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 body.dark-mode .panel-header {
@@ -568,17 +631,63 @@ body.dark-mode .panel-header {
   cursor: grabbing;
 }
 
+.panel-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.panel-toggle:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.panel-toggle i {
+  transition: transform 0.2s ease;
+}
+
+.floating-panel.collapsed .panel-toggle i {
+  transform: rotate(-90deg);
+}
+
+.panel-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+  max-height: 2000px;
+  opacity: 1;
+  padding-top: 16px;
+}
+
+.floating-panel.collapsed .panel-body {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+}
+
 .control-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .control-group label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 11px;
   color: #666666;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -596,10 +705,10 @@ body.dark-mode .control-group label {
 
 .control-group select {
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid #E0E0E0;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   color: #333333;
   background: #FFFFFF;
   transition: all 0.2s ease;
@@ -607,8 +716,8 @@ body.dark-mode .control-group label {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 32px;
+  background-position: right 8px center;
+  padding-right: 28px;
 }
 
 .control-group select:hover {
@@ -669,9 +778,9 @@ body.dark-mode .control-group label {
 
 .value-display {
   width: auto;
-  min-width: 24px;
-  max-width: 48px;
-  font-size: 10px;
+  min-width: 28px;
+  max-width: 50px;
+  font-size: 9px;
   color: #8B9D83;
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
   font-weight: normal;
@@ -720,10 +829,10 @@ body.dark-mode .value-display:focus {
 .control-group input[type="text"],
 .control-group input[type="password"] {
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid #E0E0E0;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   color: #333333;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: all 0.2s ease;
@@ -731,14 +840,14 @@ body.dark-mode .value-display:focus {
 
 .control-group input[type="text"]#model-input {
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .help-text {
-  font-size: 10px;
+  font-size: 9px;
   color: #999999;
-  margin-top: 6px;
-  line-height: 1.4;
+  margin-top: 4px;
+  line-height: 1.3;
   font-family: 'SF Mono', 'Consolas', monospace;
 }
 
@@ -747,8 +856,8 @@ body.dark-mode .help-text {
 }
 
 .detected-text {
-  margin-top: 8px;
-  font-size: 11px;
+  margin-top: 4px;
+  font-size: 10px;
   color: #666666;
 }
 
@@ -791,13 +900,13 @@ body.dark-mode .control-group label:has(.switch) span {
 
 .autoformat-btn {
   width: 100%;
-  padding: 10px 16px;
-  margin-top: 12px;
+  padding: 8px 12px;
+  margin-top: 8px;
   background: #8B9D83;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -862,34 +971,19 @@ body.dark-mode .autoformat-btn:hover {
   left: 20px;
 }
 
-#seed-box {
-  width: 640px;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 12px;
-  padding: 6px;
-  cursor: grab;
-}
-
-#seed-box:active {
-  cursor: grabbing;
-}
-
 #seed-input {
   width: 100%;
   border: 1px solid #E0E0E0;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
   color: #333333;
   outline: none;
   transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.9);
+  background: #FFFFFF;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   resize: vertical;
-  min-height: 44px;
-  max-height: 200px;
+  min-height: 36px;
 }
 
 #seed-input:hover {
@@ -899,7 +993,6 @@ body.dark-mode .autoformat-btn:hover {
 #seed-input:focus {
   border-color: #8B9D83;
   box-shadow: 0 0 0 3px rgba(139, 157, 131, 0.1);
-  background: #FFFFFF;
 }
 
 #seed-input::placeholder {
@@ -1008,6 +1101,11 @@ body.dark-mode #seed-input:focus {
 
 body.dark-mode #seed-input::placeholder {
   color: #666666;
+}
+
+/* Textarea styling */
+textarea {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Toast Notifications */

@@ -54,8 +54,12 @@ def save_config(config):
 
 def load_tree():
     if TREE_FILE.exists():
-        with open(TREE_FILE) as f:
-            return json.load(f)
+        try:
+            with open(TREE_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            # corrupted/empty file, return empty tree
+            return {'nodes': {}, 'focused_node_id': None}
     return {'nodes': {}, 'focused_node_id': None}
 
 def save_tree(tree):

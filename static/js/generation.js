@@ -31,8 +31,18 @@ async function handleGenerateClick(parentNodeId) {
   const ESTIMATED_HEIGHT = 50; // Height of "⟳ generating..." node
   const VERTICAL_GAP = 40; // Increased gap to prevent overlaps
   
+  // Calculate parent height to find its center
+  const LINE_HEIGHT = 18;
+  const PADDING = 12;
+  const MIN_HEIGHT = 50;
+  const CHARS_PER_LINE = 36;
+  const parentText = parent.text || '';
+  const parentLines = wrapText(parentText, CHARS_PER_LINE);
+  const parentHeight = Math.max(MIN_HEIGHT, parentLines.length * LINE_HEIGHT + PADDING * 2);
+  const parentCenterY = parent.position.y + (parentHeight / 2);
+  
   const totalHeight = n * ESTIMATED_HEIGHT + (n - 1) * VERTICAL_GAP;
-  let currentY = parent.position.y - (totalHeight / 2);
+  let currentY = parentCenterY - (totalHeight / 2);
   
   for (let i = 0; i < n; i++) {
     const id = generateUUID();
@@ -46,7 +56,7 @@ async function handleGenerateClick(parentNodeId) {
       loading: true,
       position: {
         x: parent.position.x + HORIZONTAL_OFFSET,
-        y: currentY + ESTIMATED_HEIGHT / 2
+        y: currentY
       },
       model: settings.model,
       temperature: settings.temperature,
@@ -158,7 +168,7 @@ function calculateNodeHeight(node) {
   const LINE_HEIGHT = 18;
   const PADDING = 12;
   const MIN_HEIGHT = 50;
-  const CHARS_PER_LINE = 42;
+  const CHARS_PER_LINE = 36;
   
   let displayText = node.text || '';
   const lines = wrapText(displayText, CHARS_PER_LINE);
@@ -179,13 +189,17 @@ function repositionSiblingsWithHeights(parentNodeId, recursive = true) {
     return;
   }
   
-  const HORIZONTAL_OFFSET = 380; // 80px further right
-  const VERTICAL_GAP = 40; // Increased gap to prevent overlaps
+  const HORIZONTAL_OFFSET = 380;
+  const VERTICAL_GAP = 40;
   
   const parent = appState.tree.nodes[parentNodeId];
   
   // Sort children by current Y position to maintain order
   children.sort((a, b) => a.position.y - b.position.y);
+  
+  // Calculate parent height to find its center
+  const parentHeight = calculateNodeHeight(parent);
+  const parentCenterY = parent.position.y + (parentHeight / 2);
   
   // Calculate heights for each child
   const heights = children.map(child => calculateNodeHeight(child));
@@ -193,16 +207,16 @@ function repositionSiblingsWithHeights(parentNodeId, recursive = true) {
   // Calculate total height needed (sum of heights + gaps)
   const totalHeight = heights.reduce((sum, h) => sum + h, 0) + (children.length - 1) * VERTICAL_GAP;
   
-  // Start from top, centered around parent
-  let currentY = parent.position.y - (totalHeight / 2);
+  // Start from top, centered around parent's center
+  let currentY = parentCenterY - (totalHeight / 2);
   
   children.forEach((child, i) => {
     const oldX = child.position.x;
     const oldY = child.position.y;
     
     child.position.x = parent.position.x + HORIZONTAL_OFFSET;
-    // Position at the center of this child's box
-    child.position.y = currentY + heights[i] / 2;
+    // position.y is the TOP of the node
+    child.position.y = currentY;
     
     // If recursive, reposition this child's descendants
     if (recursive) {

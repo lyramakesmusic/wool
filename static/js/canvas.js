@@ -71,5 +71,46 @@ function setupCanvas() {
 function updateViewport() {
   const viewport = document.getElementById('viewport');
   viewport.setAttribute('transform', `translate(${appState.canvas.pan.x},${appState.canvas.pan.y}) scale(${appState.canvas.zoom})`);
+  
+  // Update grid pattern based on zoom level
+  updateGridPattern();
+}
+
+function updateGridPattern() {
+  const zoom = appState.canvas.zoom;
+  const isDarkMode = document.body.classList.contains('dark-mode');
+  
+  // Base grid size and dot size
+  const baseSize = 20;
+  const baseDotRadius = 1.2;
+  
+  // Determine grid scale - subdivide or multiply based on zoom
+  let gridSize = baseSize;
+  let opacity = isDarkMode ? 0.8 : 0.5;
+  let dotRadius = baseDotRadius / zoom; // Scale dot size inversely with zoom to keep visual size
+  
+  if (zoom < 0.25) {
+    gridSize = baseSize * 4; // Larger grid when zoomed way out
+    opacity = (isDarkMode ? 0.8 : 0.5) * 0.7;
+  } else if (zoom < 0.5) {
+    gridSize = baseSize * 2; // Double grid when zoomed out
+    opacity = (isDarkMode ? 0.8 : 0.5) * 0.85;
+  } else if (zoom > 2.5) {
+    gridSize = baseSize / 2; // Subdivide when zoomed way in
+    opacity = (isDarkMode ? 0.8 : 0.5) * 0.8;
+  } else if (zoom > 1.5) {
+    gridSize = baseSize * 0.75; // Slight subdivision when zoomed in
+    opacity = (isDarkMode ? 0.8 : 0.5) * 0.9;
+  }
+  
+  // Update the pattern
+  const patternId = isDarkMode ? 'dot-grid-dark' : 'dot-grid';
+  const pattern = document.getElementById(patternId);
+  const circle = pattern.querySelector('circle');
+  
+  pattern.setAttribute('width', gridSize);
+  pattern.setAttribute('height', gridSize);
+  circle.setAttribute('r', dotRadius);
+  circle.setAttribute('opacity', opacity);
 }
 

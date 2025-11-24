@@ -38,7 +38,12 @@ async function init() {
   
   // setup draggable panels
   makeDraggable(document.getElementById('settings-panel'));
-  makeDraggable(document.getElementById('seed-box'), true);
+  
+  // constrain panels on window resize
+  window.addEventListener('resize', constrainPanelsToScreen);
+  
+  // setup panel collapse toggle
+  setupPanelToggle();
   
   // setup settings listeners
   setupSettingsListeners();
@@ -94,6 +99,28 @@ function updateProviderDetection() {
   return detection;
 }
 
+function setupPanelToggle() {
+  const settingsToggle = document.getElementById('settings-toggle');
+  const settingsPanel = document.getElementById('settings-panel');
+  
+  if (settingsToggle) {
+    settingsToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsPanel.classList.toggle('collapsed');
+      
+      // Save collapsed state
+      const isCollapsed = settingsPanel.classList.contains('collapsed');
+      localStorage.setItem('settings-collapsed', isCollapsed);
+    });
+    
+    // Restore collapsed state
+    const isCollapsed = localStorage.getItem('settings-collapsed') === 'true';
+    if (isCollapsed) {
+      settingsPanel.classList.add('collapsed');
+    }
+  }
+}
+
 function setupSettingsListeners() {
   // sync sliders with value inputs (bidirectional)
   const sliderPairs = [
@@ -129,6 +156,7 @@ function setupSettingsListeners() {
     document.body.classList.toggle('dark-mode', e.target.checked);
     const canvasBg = document.getElementById('canvas-bg');
     canvasBg.setAttribute('fill', e.target.checked ? 'url(#dot-grid-dark)' : 'url(#dot-grid)');
+    updateGridPattern(); // Update grid for new theme
     saveSettings();
   });
   
@@ -222,31 +250,42 @@ function formatNodeAndChildren(nodeId) {
   
   if (children.length === 0) return;
   
-  const HORIZONTAL_OFFSET = 380; // 80px further right
-  const VERTICAL_GAP = 40; // Increased gap to prevent overlaps
+  const HORIZONTAL_OFFSET = 380;
+  const VERTICAL_GAP = 40;
   
   // Sort by Y position to maintain order
   children.sort((a, b) => a.position.y - b.position.y);
   
-  // Calculate heights
+  // Calculate children heights
+  const LINE_HEIGHT = 18;
+  const PADDING = 12;
+  const MIN_HEIGHT = 50;
+  const CHARS_PER_LINE = 36;
+  
+  // Calculate parent height to find its center
+  const parentText = parent.text || '';
+  const parentLines = wrapText(parentText, CHARS_PER_LINE);
+  const parentHeight = Math.max(MIN_HEIGHT, parentLines.length * LINE_HEIGHT + PADDING * 2);
+  const parentCenterY = parent.position.y + (parentHeight / 2);
+  
   const heights = children.map(child => {
-    const LINE_HEIGHT = 18;
-    const PADDING = 12;
-    const MIN_HEIGHT = 50;
-    const CHARS_PER_LINE = 42;
-    
     let displayText = child.text || '';
     const lines = wrapText(displayText, CHARS_PER_LINE);
-    
     return Math.max(MIN_HEIGHT, lines.length * LINE_HEIGHT + PADDING * 2);
   });
   
+  // totalHeight = sum of all heights + gaps between them
   const totalHeight = heights.reduce((sum, h) => sum + h, 0) + (children.length - 1) * VERTICAL_GAP;
-  let currentY = parent.position.y - (totalHeight / 2);
+  
+  // Start position: top edge of the block of children, centered around parent's center
+  let currentY = parentCenterY - (totalHeight / 2);
   
   children.forEach((child, i) => {
     child.position.x = parent.position.x + HORIZONTAL_OFFSET;
-    child.position.y = currentY + heights[i] / 2;
+    // position.y is the TOP of the node
+    child.position.y = currentY;
+    
+    // Move currentY down by this child's height + gap
     currentY += heights[i] + VERTICAL_GAP;
     
     // Recursively format children's children
@@ -254,7 +293,7 @@ function formatNodeAndChildren(nodeId) {
   });
 }
 
-function makeDraggable(element, keepBottom = false) {
+function makeDraggable(element) {
   let isDragging = false;
   let startX, startY, startElemX, startElemY;
   
@@ -273,18 +312,19 @@ function makeDraggable(element, keepBottom = false) {
     startY = e.clientY;
     
     // Remove transform if present (for seed box centering)
-    if (keepBottom && element.style.transform) {
+    if (element.style.transform) {
       element.style.transform = 'none';
     }
     
-    if (keepBottom) {
-      startElemX = element.offsetLeft;
-      const computedBottom = window.innerHeight - element.offsetTop - element.offsetHeight;
-      startElemY = computedBottom;
-    } else {
-      startElemX = element.offsetLeft;
-      startElemY = element.offsetTop;
+    // Convert to top-based positioning if currently bottom-based
+    if (element.style.bottom && element.style.bottom !== 'auto') {
+      const currentBottom = parseInt(element.style.bottom);
+      element.style.top = (window.innerHeight - element.offsetHeight - currentBottom) + 'px';
+      element.style.bottom = 'auto';
     }
+    
+    startElemX = element.offsetLeft;
+    startElemY = element.offsetTop;
     
     element.style.cursor = 'grabbing';
   };
@@ -302,34 +342,42 @@ function makeDraggable(element, keepBottom = false) {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    if (keepBottom) {
-      // Constrain to screen boundaries
-      let newLeft = startElemX + dx;
-      let newBottom = startElemY - dy;
-      
-      newLeft = Math.max(0, Math.min(windowWidth - width, newLeft));
-      newBottom = Math.max(0, Math.min(windowHeight - height, newBottom));
-      
-      element.style.left = newLeft + 'px';
-      element.style.bottom = newBottom + 'px';
-      element.style.top = 'auto';
-    } else {
-      // Constrain to screen boundaries
-      let newLeft = startElemX + dx;
-      let newTop = startElemY + dy;
-      
-      newLeft = Math.max(0, Math.min(windowWidth - width, newLeft));
-      newTop = Math.max(0, Math.min(windowHeight - height, newTop));
-      
-      element.style.left = newLeft + 'px';
-      element.style.top = newTop + 'px';
-    }
+    // Constrain to screen boundaries
+    let newLeft = startElemX + dx;
+    let newTop = startElemY + dy;
+    
+    newLeft = Math.max(0, Math.min(windowWidth - width, newLeft));
+    newTop = Math.max(0, Math.min(windowHeight - height, newTop));
+    
+    element.style.left = newLeft + 'px';
+    element.style.top = newTop + 'px';
   };
   
   const onMouseUp = () => {
     if (isDragging) {
       isDragging = false;
       element.style.cursor = dragHandle ? 'default' : 'grab';
+      
+      // Calculate nearest edges and convert positioning
+      const rect = element.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      const distToTop = rect.top;
+      const distToBottom = windowHeight - rect.bottom;
+      const distToLeft = rect.left;
+      const distToRight = windowWidth - rect.right;
+      
+      // Anchor to nearest vertical edge
+      if (distToBottom < distToTop) {
+        element.style.bottom = distToBottom + 'px';
+        element.style.top = 'auto';
+      }
+      // (else already using top)
+      
+      // Horizontal anchoring (left vs right) - could add later if needed
+      // For now we keep left-based positioning
+      
       saveUIState();
     }
   };
@@ -349,18 +397,17 @@ function makeDraggable(element, keepBottom = false) {
 
 function saveUIState() {
   const settingsPanel = document.getElementById('settings-panel');
-  const seedBox = document.getElementById('seed-box');
   
-  const seedBoxPos = { x: seedBox.offsetLeft };
-  if (seedBox.style.bottom && seedBox.style.bottom !== 'auto') {
-    seedBoxPos.bottom = parseInt(seedBox.style.bottom);
+  // settings panel positioning
+  const settingsPos = { x: settingsPanel.offsetLeft };
+  if (settingsPanel.style.bottom && settingsPanel.style.bottom !== 'auto') {
+    settingsPos.bottom = parseInt(settingsPanel.style.bottom);
   } else {
-    seedBoxPos.y = seedBox.offsetTop;
+    settingsPos.y = settingsPanel.offsetTop;
   }
   
   appState.ui.panel_positions = {
-    settings: { x: settingsPanel.offsetLeft, y: settingsPanel.offsetTop },
-    seed_box: seedBoxPos
+    settings: settingsPos
   };
   
   appState.ui.canvas = {
@@ -381,6 +428,28 @@ function loadUIState() {
   }
 }
 
+function constrainPanelsToScreen() {
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // Constrain settings panel (respects top/bottom anchor)
+  const panel = document.getElementById('settings-panel');
+  if (panel) {
+    const rect = panel.getBoundingClientRect();
+    let x = Math.max(0, Math.min(windowWidth - rect.width, panel.offsetLeft));
+    panel.style.left = x + 'px';
+    
+    if (panel.style.bottom && panel.style.bottom !== 'auto') {
+      const currentBottom = parseInt(panel.style.bottom);
+      let bottom = Math.max(0, Math.min(windowHeight - rect.height, currentBottom));
+      panel.style.bottom = bottom + 'px';
+    } else {
+      let y = Math.max(0, Math.min(windowHeight - rect.height, panel.offsetTop));
+      panel.style.top = y + 'px';
+    }
+  }
+}
+
 function applyUIState() {
   const positions = appState.ui.panel_positions;
   if (!positions) return;
@@ -394,32 +463,20 @@ function applyUIState() {
     
     // Constrain to screen
     let x = Math.max(0, Math.min(windowWidth - rect.width, positions.settings.x));
-    let y = Math.max(0, Math.min(windowHeight - rect.height, positions.settings.y));
-    
     panel.style.left = x + 'px';
-    panel.style.top = y + 'px';
+    
+    // Apply vertical anchor (top or bottom)
+    if (positions.settings.bottom !== undefined) {
+      let bottom = Math.max(0, Math.min(windowHeight - rect.height, positions.settings.bottom));
+      panel.style.bottom = bottom + 'px';
+      panel.style.top = 'auto';
+    } else if (positions.settings.y !== undefined) {
+      let y = Math.max(0, Math.min(windowHeight - rect.height, positions.settings.y));
+      panel.style.top = y + 'px';
+      panel.style.bottom = 'auto';
+    }
   }
   
-  if (positions.seed_box) {
-    const box = document.getElementById('seed-box');
-    box.style.transform = 'none'; // Remove default centering transform
-    
-    const rect = box.getBoundingClientRect();
-    
-    // Constrain to screen
-    let x = Math.max(0, Math.min(windowWidth - rect.width, positions.seed_box.x));
-    
-    if (positions.seed_box.bottom !== undefined) {
-      let bottom = Math.max(0, Math.min(windowHeight - rect.height, positions.seed_box.bottom));
-      box.style.bottom = bottom + 'px';
-      box.style.top = 'auto';
-    } else if (positions.seed_box.y !== undefined) {
-      let y = Math.max(0, Math.min(windowHeight - rect.height, positions.seed_box.y));
-      box.style.top = y + 'px';
-    }
-    
-    box.style.left = x + 'px';
-  }
   
   // Restore canvas state
   if (appState.ui.canvas) {
