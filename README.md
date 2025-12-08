@@ -4,12 +4,6 @@ A tree-based completion explorer for base LLMs. Generate multiple completions si
 
 ![screenshot of tree interface showing settings panel on left, branching nodes connected by splines on canvas, and seed textbox at bottom](interface_dark.png)
 
-## **WARNING: EARLY MVP. MANY BUGS.**
-
-**⚠ New seeds will overwrite your entire tree with no undo. There is no save state or document management. Be careful!**
-
-More updates soon!
-
 ## Quick Start
 
 1. **Install Python** (3.7 or higher) if you haven't already
@@ -57,6 +51,12 @@ More updates soon!
 - Immediate children of focused node are visible (next steps)
 - Everything else is hidden to reduce clutter
 
+**Saving/loading:**
+- Creating a new seed will wipe the entire tree, so **be careful!**
+- Individual leaves have a "download as .txt" when viewed
+- Download a whole tree as json
+- Upload trees from json files saved with wool
+
 ### Model Settings
 
 **Temperature:** Controls randomness. Higher = more creative/varied, lower = more focused/repetitive.
@@ -97,6 +97,7 @@ Tree state is automatically saved to `tree_state.json` on the server. Your explo
 ## Contributing
 
 Contributions are welcome! Feel free to submit issues and pull requests.
+
 
 
 
