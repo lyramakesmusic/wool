@@ -96,6 +96,55 @@ def save_settings():
     save_config(existing_config)
     return jsonify({'status': 'ok'})
 
+@app.route('/api/oai/models', methods=['POST'])
+def get_oai_models():
+    """Proxy endpoint to fetch models from OpenAI-compatible APIs (avoids CORS)"""
+    import requests
+    
+    data = request.json
+    endpoint = data.get('endpoint', '').strip()
+    api_key = data.get('api_key', '').strip()
+    
+    if not endpoint:
+        return jsonify({'error': 'Endpoint is required'}), 400
+    
+    # Normalize endpoint URL
+    endpoint = endpoint.rstrip('/')
+    if not endpoint.endswith('/v1'):
+        endpoint = endpoint + '/v1'
+    models_url = endpoint + '/models'
+    
+    headers = {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'identity'  # Avoid gzip issues
+    }
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+    
+    try:
+        response = requests.get(models_url, headers=headers, timeout=10)
+        
+        if response.status_code != 200:
+            return jsonify({
+                'error': f'API returned {response.status_code}',
+                'details': response.text[:200]
+            }), response.status_code
+        
+        result = response.json()
+        models = result.get('data', [])
+        
+        # Extract and sort model IDs
+        model_ids = sorted([m.get('id', '') for m in models if m.get('id')])
+        
+        return jsonify({'models': model_ids})
+        
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Request timed out'}), 504
+    except requests.exceptions.ConnectionError:
+        return jsonify({'error': 'Could not connect to endpoint'}), 502
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/tree', methods=['GET'])
 def get_tree():
     return jsonify(load_tree())
@@ -202,14 +251,29 @@ def call_model_api(context, settings):
     model_str = settings.get('model', '')
     endpoint_url = settings.get('endpoint', '')
     
-    # Get token - priority: settings.token > env var > config file
-    token = settings.get('token', '') or settings.get('api_key', '')
-    if not token:
-        token = os.environ.get('OPENROUTER_API_KEY', '')
-    if not token:
-        # Load from config file as last resort
-        config = load_config()
-        token = config.get('token', '')
+    # For OpenAI-compatible providers, prioritize session params
+    if provider == 'openai':
+        # Session oai_model takes priority
+        oai_model = settings.get('oai_model', '').strip()
+        if oai_model:
+            model_str = oai_model
+        
+        # Session oai_api_key takes priority
+        oai_api_key = settings.get('oai_api_key', '').strip()
+        if oai_api_key:
+            token = oai_api_key
+        else:
+            # Fall back to saved custom_api_key for this endpoint
+            config = load_config()
+            token = config.get('custom_api_key', '')
+    else:
+        # OpenRouter: use saved token
+        token = settings.get('token', '') or settings.get('api_key', '')
+        if not token:
+            token = os.environ.get('OPENROUTER_API_KEY', '')
+        if not token:
+            config = load_config()
+            token = config.get('token', '')
     
     # Determine endpoint based on provider
     if provider == 'openai':
@@ -241,7 +305,7 @@ def call_model_api(context, settings):
             'temperature': settings.get('temperature', 1.0),
             'system': "The assistant is in CLI simulation mode, and responds to the user's CLI commands only with the output of the command.",
             'messages': [
-                {'role': 'user', 'content': f"<cmd>cat untitled.txt</cmd> (5.8 KB)"},
+                {'role': 'user', 'content': f"<cmd>cat untitled.txt</cmd> (9.2 KB)"},
                 {'role': 'assistant', 'content': context}
             ],
             'stream': False
