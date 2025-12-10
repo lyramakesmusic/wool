@@ -849,7 +849,6 @@ body.dark-mode .control-group select:focus {
   outline: none;
   color: #6B7D63;
   background: rgba(139, 157, 131, 0.08);
-  padding: 2px 4px;
   border-radius: 3px;
 }
 
@@ -864,7 +863,6 @@ body.dark-mode .value-display:hover {
 body.dark-mode .value-display:focus {
   color: #AAC0A3;
   background: rgba(139, 157, 131, 0.12);
-  padding: 2px 4px;
 }
 
 .control-group input[type="number"],
@@ -1263,4 +1261,162 @@ body.dark-mode .error-toast {
 
 body.dark-mode .toast-body {
   color: #E8E8E8;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  #settings-panel {
+    width: calc(100% - 24px);
+    max-width: 340px;
+    left: 12px !important;
+    right: 12px;
+    top: auto !important;
+    bottom: 12px !important;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 12px;
+    transition: width 0.3s ease, max-width 0.3s ease, padding 0.3s ease, border-radius 0.3s ease;
+  }
+
+  /* When collapsed, show a slim full-width bar */
+  #settings-panel.collapsed {
+    width: calc(100% - 24px) !important;
+    max-width: 340px;
+    max-height: 44px;
+    overflow: hidden;
+    padding: 10px 16px;
+    border-radius: 12px;
+  }
+
+  #settings-panel.collapsed .panel-header {
+    padding: 0;
+    gap: 6px;
+  }
+
+  #settings-panel .panel-header {
+    padding: 8px 4px;
+    font-size: 10px;
+    touch-action: none;
+  }
+
+  #settings-panel .panel-toggle {
+    padding: 4px;
+    font-size: 14px;
+  }
+
+  /* Make toggle button more prominent on mobile */
+  #settings-panel .panel-toggle i {
+    font-size: 14px;
+  }
+
+  .floating-panel.collapsed .panel-toggle i {
+    transform: rotate(180deg);
+  }
+
+  /* Larger touch targets for controls */
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .control-group input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .control-group input[type="number"],
+  .control-group input[type="text"],
+  .control-group input[type="password"],
+  .control-group select {
+    padding: 10px 12px;
+    font-size: 16px;
+    /* Prevents iOS zoom on focus */
+  }
+
+  .control-group input[type="checkbox"].switch {
+    width: 50px;
+    height: 28px;
+  }
+
+  .control-group input[type="checkbox"].switch::before {
+    width: 24px;
+    height: 24px;
+  }
+
+  .control-group input[type="checkbox"].switch:checked::before {
+    left: 24px;
+  }
+
+  .autoformat-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  #seed-input {
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+
+  /* Toast positioning on mobile */
+  .toast-container {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+  }
+
+  .error-toast {
+    min-width: auto;
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* Prevent touch callout on mobile */
+#canvas,
+#canvas-bg,
+.node {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Ensure canvas receives touch events properly */
+#canvas {
+  touch-action: none;
+}
+
+/* Mobile editor popup - snap to top for keyboard */
+@media (max-width: 768px) {
+  .view-as-popup {
+    align-items: flex-start;
+    padding-top: 12px;
+  }
+
+  .node-editor-popup {
+    width: calc(100% - 24px);
+    max-width: none;
+    margin: 0 12px;
+    max-height: 45vh;
+    border-radius: 12px;
+  }
+
+  .node-editor-popup .popup-content {
+    padding: 12px;
+  }
+
+  .node-editor-popup .node-edit-textarea {
+    font-size: 16px;
+    min-height: 120px;
+  }
+
+  .node-editor-popup .popup-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .node-editor-popup .btn-primary,
+  .node-editor-popup .btn-secondary {
+    flex: 1;
+    padding: 12px;
+  }
 }

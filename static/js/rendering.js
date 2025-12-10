@@ -3,20 +3,20 @@
 // lines = ["text line 1", "text line 2", ...], maxChars per line
 function wrapText(text, maxChars) {
   if (!text) return [''];
-  
+
   const lines = [];
   // First split by actual newlines
   const paragraphs = text.split(/\n/);
-  
+
   paragraphs.forEach(para => {
     if (!para) {
       lines.push('');
       return;
     }
-    
+
     const words = para.split(' ');
     let currentLine = '';
-    
+
     words.forEach(word => {
       // Force break long words
       if (word.length > maxChars) {
@@ -30,7 +30,7 @@ function wrapText(text, maxChars) {
         }
         return;
       }
-      
+
       const testLine = currentLine ? currentLine + ' ' + word : word;
       if (testLine.length <= maxChars) {
         currentLine = testLine;
@@ -39,10 +39,10 @@ function wrapText(text, maxChars) {
         currentLine = word;
       }
     });
-    
+
     if (currentLine) lines.push(currentLine);
   });
-  
+
   return lines.length > 0 ? lines : [''];
 }
 
@@ -56,27 +56,27 @@ function renderNode(node, isFocused, isOnFocusedPath) {
   g.setAttribute('class', classes);
   g.setAttribute('data-node-id', node.id);
   g.setAttribute('transform', `translate(${node.position.x},${node.position.y})`);
-  
+
   if (node.loading) {
     g.classList.add('loading');
   }
   if (node.error) {
     g.classList.add('error');
   }
-  
+
   const LINE_HEIGHT = 18;
   const PADDING = 12; // Same padding all around
   const FIXED_WIDTH = node.isGhost ? 50 : 280; // Ghost nodes are very thin
   const MIN_HEIGHT = node.isGhost ? 30 : 50;
   const CHARS_PER_LINE = node.isGhost ? 4 : 36; // Fits in width with padding (280-24)/~7px per char
-  
+
   // wrap text and calculate dimensions
   let displayText = node.text || (node.loading ? '⟳ generating...' : '');
   const lines = wrapText(displayText, CHARS_PER_LINE);
-  
+
   const nodeWidth = FIXED_WIDTH;
   const nodeHeight = Math.max(MIN_HEIGHT, lines.length * LINE_HEIGHT + PADDING * 2);
-  
+
   // background
   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   rect.setAttribute('class', 'node-bg');
@@ -84,7 +84,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
   rect.setAttribute('height', nodeHeight);
   rect.setAttribute('rx', '8');
   g.appendChild(rect);
-  
+
   // text lines with clipping
   const clipId = `clip-${node.id}`;
   const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
@@ -96,10 +96,10 @@ function renderNode(node, isFocused, isOnFocusedPath) {
   clipRect.setAttribute('height', nodeHeight);
   clipPath.appendChild(clipRect);
   g.appendChild(clipPath);
-  
+
   const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   textGroup.setAttribute('clip-path', `url(#${clipId})`);
-  
+
   lines.forEach((line, i) => {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('class', 'node-text');
@@ -108,9 +108,9 @@ function renderNode(node, isFocused, isOnFocusedPath) {
     text.textContent = line;
     textGroup.appendChild(text);
   });
-  
+
   g.appendChild(textGroup);
-  
+
   // Add children indicator if node has children (but not for ghost nodes)
   if (!node.isGhost) {
     const hasChildren = Object.values(appState.tree.nodes).some(n => n.parent_id === node.id);
@@ -122,7 +122,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       indicator.setAttribute('x2', nodeWidth + 8);
       indicator.setAttribute('y2', nodeHeight / 2 - 6);
       g.appendChild(indicator);
-      
+
       const indicator2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       indicator2.setAttribute('class', 'children-indicator');
       indicator2.setAttribute('x1', nodeWidth);
@@ -130,7 +130,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       indicator2.setAttribute('x2', nodeWidth + 8);
       indicator2.setAttribute('y2', nodeHeight / 2);
       g.appendChild(indicator2);
-      
+
       const indicator3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       indicator3.setAttribute('class', 'children-indicator');
       indicator3.setAttribute('x1', nodeWidth);
@@ -139,12 +139,13 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       indicator3.setAttribute('y2', nodeHeight / 2 + 6);
       g.appendChild(indicator3);
     }
-    
+
     // Add hover buttons group
     const hoverButtons = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     hoverButtons.setAttribute('class', 'hover-buttons');
     hoverButtons.setAttribute('opacity', '0');
-    
+    hoverButtons.setAttribute('data-node-id', node.id);
+
     // View-as button
     const viewAsBtn = createHoverButton(-8, -8, 'bi-eye', 'view-as');
     viewAsBtn.addEventListener('click', (e) => {
@@ -152,7 +153,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       showViewAsPopup(node);
     });
     hoverButtons.appendChild(viewAsBtn);
-    
+
     // Edit button
     const editBtn = createHoverButton(nodeWidth - 16, -8, 'bi-pencil', 'edit');
     editBtn.addEventListener('click', (e) => {
@@ -160,7 +161,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       editNode(node);
     });
     hoverButtons.appendChild(editBtn);
-    
+
     // Delete button
     const deleteBtn = createHoverButton(nodeWidth + 8, -8, 'bi-trash', 'delete');
     deleteBtn.addEventListener('click', (e) => {
@@ -168,24 +169,54 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       deleteNode(node);
     });
     hoverButtons.appendChild(deleteBtn);
-    
+
     g.appendChild(hoverButtons);
-    
-    // Show/hide hover buttons on node hover
+
+    // Desktop: show/hide hover buttons on mouse hover (always enabled)
     g.addEventListener('mouseenter', () => {
       hoverButtons.setAttribute('opacity', '1');
     });
     g.addEventListener('mouseleave', () => {
       hoverButtons.setAttribute('opacity', '0');
     });
+
+    // Mobile: additionally support toggle on tap for touch devices
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) {
+      let buttonsVisible = false;
+
+      g.addEventListener('touchend', (e) => {
+        // Only handle single-finger taps, not pinch gestures
+        if (e.touches.length === 0 && e.changedTouches.length === 1) {
+          // Check if tap was on a hover button or plus button - let those handle themselves
+          const target = e.target;
+          if (target.closest('.hover-btn') || target.closest('.plus-group')) {
+            return;
+          }
+
+          e.preventDefault();
+
+          // Hide all other visible hover buttons first
+          document.querySelectorAll('.hover-buttons[opacity="1"]').forEach(btn => {
+            if (btn.getAttribute('data-node-id') !== node.id) {
+              btn.setAttribute('opacity', '0');
+            }
+          });
+
+          // Toggle this node's buttons
+          buttonsVisible = !buttonsVisible;
+          hoverButtons.setAttribute('opacity', buttonsVisible ? '1' : '0');
+        }
+      }, { passive: false });
+    }
   }
-  
+
   // plus button (grouped so hover animation works correctly) - not for ghost nodes
   if (!node.isGhost) {
     const plusGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     plusGroup.setAttribute('class', 'plus-group');
     plusGroup.setAttribute('transform', `translate(${nodeWidth + 17}, ${nodeHeight / 2})`);
-    
+
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('class', 'plus-button');
     circle.setAttribute('cx', 0);
@@ -193,7 +224,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
     circle.setAttribute('r', '12');
     circle.style.transition = 'r 0.15s ease, fill 0.15s ease, stroke 0.15s ease';
     plusGroup.appendChild(circle);
-    
+
     const plus = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     plus.setAttribute('class', 'plus-symbol');
     plus.setAttribute('x', 0);
@@ -201,10 +232,10 @@ function renderNode(node, isFocused, isOnFocusedPath) {
     plus.setAttribute('text-anchor', 'middle');
     plus.textContent = '+';
     plusGroup.appendChild(plus);
-    
+
     g.appendChild(plusGroup);
   }
-  
+
   // ghost nodes only get click handler to expand
   if (node.isGhost) {
     g.addEventListener('click', (e) => {
@@ -216,11 +247,11 @@ function renderNode(node, isFocused, isOnFocusedPath) {
     g.style.cursor = 'pointer';
     return g;
   }
-  
+
   let isDragging = false;
   let dragStartX = 0, dragStartY = 0;
   let nodeStartX = 0, nodeStartY = 0;
-  
+
   rect.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     if (e.button === 0) { // left click only
@@ -233,16 +264,16 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       const viewport = document.getElementById('viewport');
       const transform = viewport.transform.baseVal.getItem(0);
       const viewportTransform = viewport.getCTM();
-      
+
       dragStartX = svgP.x;
       dragStartY = svgP.y;
       nodeStartX = node.position.x;
       nodeStartY = node.position.y;
-      
+
       e.preventDefault();
     }
   });
-  
+
   // Global handlers for dragging (attached to SVG)
   const svg = document.getElementById('canvas');
   const mousemove = (e) => {
@@ -253,18 +284,18 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
       const viewport = document.getElementById('viewport');
       const viewportTransform = viewport.getCTM();
-      
+
       // Calculate delta in viewport space
       const dx = (svgP.x - dragStartX) / appState.canvas.zoom;
       const dy = (svgP.y - dragStartY) / appState.canvas.zoom;
-      
+
       node.position.x = nodeStartX + dx;
       node.position.y = nodeStartY + dy;
-      
+
       renderTree();
     }
   };
-  
+
   const mouseup = (e) => {
     if (isDragging) {
       isDragging = false;
@@ -276,16 +307,16 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       } else {
         // Mark this node as manually positioned
         node.manually_positioned = true;
-        
+
         // Save tree after dragging
         saveTree();
       }
     }
   };
-  
+
   svg.addEventListener('mousemove', mousemove);
   svg.addEventListener('mouseup', mouseup);
-  
+
   const plusGroup = g.querySelector('.plus-group');
   if (plusGroup) {
     plusGroup.addEventListener('click', (e) => {
@@ -296,7 +327,7 @@ function renderNode(node, isFocused, isOnFocusedPath) {
       }
     });
   }
-  
+
   return g;
 }
 
@@ -312,15 +343,15 @@ function renderEdge(parentNode, childNode, isFocusedPath) {
 function renderTree() {
   const nodesContainer = document.getElementById('nodes');
   const edgesContainer = document.getElementById('edges');
-  
+
   nodesContainer.innerHTML = '';
   edgesContainer.innerHTML = '';
-  
+
   const visibleIds = calculateVisibleNodes(
     appState.tree.focused_node_id,
     appState.tree
   );
-  
+
   // focused path (for edge styling)
   const focusedPath = new Set();
   if (appState.tree.focused_node_id) {
@@ -333,19 +364,19 @@ function renderTree() {
       current = appState.tree.nodes[current.parent_id];
     }
   }
-  
+
   // edges first (behind nodes)
   Object.values(appState.tree.nodes).forEach(node => {
     if (node.parent_id && visibleIds.has(node.id)) {
       const parent = appState.tree.nodes[node.parent_id];
       const edgeKey = `${parent.id}-${node.id}`;
       const isFocusedPath = focusedPath.has(edgeKey);
-      
+
       const edge = renderEdge(parent, node, isFocusedPath);
       edgesContainer.appendChild(edge);
     }
   });
-  
+
   // nodes
   Object.values(appState.tree.nodes).forEach(node => {
     if (visibleIds.has(node.id)) {
@@ -353,11 +384,11 @@ function renderTree() {
       const isOnFocusedPath = focusedPath.has(node.id);
       const nodeElement = renderNode(node, isFocused, isOnFocusedPath);
       nodesContainer.appendChild(nodeElement);
-      
+
       // Add ghost nodes for collapsed children
       const children = Object.values(appState.tree.nodes).filter(n => n.parent_id === node.id);
       const visibleChildren = children.filter(child => visibleIds.has(child.id));
-      
+
       if (children.length > 0 && visibleChildren.length === 0) {
         // Has children but none are visible - show thin ghost indicator
         // Center it vertically with the parent node
@@ -366,15 +397,15 @@ function renderTree() {
         const PARENT_LINE_HEIGHT = 18;
         const PARENT_MIN_HEIGHT = 50;
         const PARENT_CHARS_PER_LINE = 36;
-        
+
         // Calculate parent height
         const parentText = node.text || '';
         const parentLines = wrapText(parentText, PARENT_CHARS_PER_LINE);
         const parentHeight = Math.max(PARENT_MIN_HEIGHT, parentLines.length * PARENT_LINE_HEIGHT + PARENT_PADDING * 2);
-        
+
         const GHOST_HEIGHT = 30;
         const HORIZONTAL_OFFSET = 310; // Closer to parent
-        
+
         const ghostNode = {
           id: `ghost-${node.id}`,
           text: '...',
@@ -386,7 +417,7 @@ function renderTree() {
         };
         const ghostElement = renderNode(ghostNode, false, false);
         nodesContainer.appendChild(ghostElement);
-        
+
         // Add ghost edge
         const ghostEdge = renderEdge(node, ghostNode, false);
         edgesContainer.appendChild(ghostEdge);
@@ -398,10 +429,10 @@ function renderTree() {
 function handleNodeClick(nodeId) {
   appState.tree.focused_node_id = nodeId;
   renderTree();
-  
+
   // save UI state to persist focused node
   saveUIState();
-  
+
   // async save focus - don't await
   fetch('/tree/focus', {
     method: 'POST',
@@ -427,30 +458,30 @@ function createHoverButton(x, y, iconClass, className) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', `hover-btn ${className}`);
   g.setAttribute('transform', `translate(${x}, ${y})`);
-  
+
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   circle.setAttribute('cx', 8);
   circle.setAttribute('cy', 8);
   circle.setAttribute('r', 8);
   circle.setAttribute('class', 'hover-btn-bg');
   g.appendChild(circle);
-  
+
   const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
   foreignObject.setAttribute('x', 4);
   foreignObject.setAttribute('y', 4);
   foreignObject.setAttribute('width', 8);
   foreignObject.setAttribute('height', 8);
-  
+
   const icon = document.createElement('i');
   icon.className = `bi ${iconClass} hover-btn-icon`;
   icon.style.fontSize = '8px';
   icon.style.display = 'flex';
   icon.style.alignItems = 'center';
   icon.style.justifyContent = 'center';
-  
+
   foreignObject.appendChild(icon);
   g.appendChild(foreignObject);
-  
+
   return g;
 }
 
@@ -458,7 +489,7 @@ function showViewAsPopup(node) {
   // Remove existing popup if any
   let popup = document.getElementById('view-as-popup');
   if (popup) popup.remove();
-  
+
   // Build the full context from root to this node
   const path = [];
   let current = node;
@@ -466,16 +497,16 @@ function showViewAsPopup(node) {
     path.unshift(current);
     current = appState.tree.nodes[current.parent_id];
   }
-  
+
   // Combine all text with preserved formatting (concatenate directly, no spaces)
   const fullText = path.map(n => n.text).join('');
   const escapedText = fullText.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-  
+
   // Create popup
   popup = document.createElement('div');
   popup.id = 'view-as-popup';
   popup.className = 'view-as-popup';
-  
+
   popup.innerHTML = `
     <div class="popup-container view-as-large">
       <div class="popup-header">
@@ -495,12 +526,12 @@ function showViewAsPopup(node) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(popup);
-  
+
   // Event listeners
   popup.querySelector('.popup-close').addEventListener('click', () => popup.remove());
-  
+
   // Copy button
   popup.querySelector('#copy-content-btn').addEventListener('click', async () => {
     try {
@@ -515,7 +546,7 @@ function showViewAsPopup(node) {
       console.error('Failed to copy:', err);
     }
   });
-  
+
   // Download button
   popup.querySelector('#download-content-btn').addEventListener('click', () => {
     const blob = new Blob([fullText], { type: 'text/plain' });
@@ -528,7 +559,7 @@ function showViewAsPopup(node) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
-  
+
   // Close on escape
   const escHandler = (e) => {
     if (e.key === 'Escape') {
@@ -537,49 +568,49 @@ function showViewAsPopup(node) {
     }
   };
   document.addEventListener('keydown', escHandler);
-  
+
   // Close on backdrop click
   popup.addEventListener('click', (e) => {
     if (e.target === popup) popup.remove();
   });
-  
+
   // Make draggable via header
   const container = popup.querySelector('.popup-container');
   const header = popup.querySelector('.popup-header');
   let isDragging = false;
   let startX, startY, startLeft, startTop;
-  
+
   header.style.cursor = 'grab';
   header.style.userSelect = 'none';
-  
+
   header.addEventListener('mousedown', (e) => {
     // Don't drag if clicking on buttons
     if (e.target.closest('button') || e.target.closest('.btn-icon')) return;
-    
+
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
-    
+
     const rect = container.getBoundingClientRect();
     startLeft = rect.left;
     startTop = rect.top;
-    
+
     header.style.cursor = 'grabbing';
     e.preventDefault();
   });
-  
+
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    
+
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    
+
     container.style.position = 'fixed';
     container.style.left = (startLeft + dx) + 'px';
     container.style.top = (startTop + dy) + 'px';
     container.style.transform = 'none';
   });
-  
+
   document.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
@@ -592,15 +623,15 @@ function editNode(node) {
   // Remove existing editor if any
   let editor = document.getElementById('node-editor');
   if (editor) editor.remove();
-  
+
   // Create editor popup
   editor = document.createElement('div');
   editor.id = 'node-editor';
   editor.className = 'view-as-popup';
-  
+
   const escapedText = node.text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   editor.innerHTML = `
-    <div class="popup-container">
+    <div class="popup-container node-editor-popup">
       <div class="popup-header">
         <h3>Edit Node</h3>
         <button class="popup-close">×</button>
@@ -614,25 +645,25 @@ function editNode(node) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(editor);
-  
+
   const textarea = editor.querySelector('.node-edit-textarea');
   textarea.focus();
   textarea.select();
-  
+
   const save = async () => {
     node.text = textarea.value;
     await saveTree();
     renderTree();
     editor.remove();
   };
-  
+
   // Event listeners
   editor.querySelector('.popup-close').addEventListener('click', () => editor.remove());
   editor.querySelector('.popup-cancel').addEventListener('click', () => editor.remove());
   editor.querySelector('.popup-save').addEventListener('click', save);
-  
+
   // Save on Ctrl+Enter
   textarea.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -640,7 +671,7 @@ function editNode(node) {
       save();
     }
   });
-  
+
   // Close on escape
   const escHandler = (e) => {
     if (e.key === 'Escape') {
@@ -654,12 +685,12 @@ function editNode(node) {
 async function deleteNode(node) {
   // Check if node has children
   const hasChildren = Object.values(appState.tree.nodes).some(n => n.parent_id === node.id);
-  
+
   // Only confirm if has children
   if (hasChildren && !confirm(`Delete this node and all its children?`)) {
     return;
   }
-  
+
   // Recursively delete this node and all descendants
   const toDelete = [node.id];
   const findDescendants = (nodeId) => {
@@ -671,10 +702,10 @@ async function deleteNode(node) {
     });
   };
   findDescendants(node.id);
-  
+
   // Delete all collected nodes
   toDelete.forEach(id => delete appState.tree.nodes[id]);
-  
+
   // If we deleted the focused node, focus parent or root
   if (toDelete.includes(appState.tree.focused_node_id)) {
     if (node.parent_id) {
@@ -684,7 +715,7 @@ async function deleteNode(node) {
       appState.tree.focused_node_id = remaining.length > 0 ? remaining[0] : null;
     }
   }
-  
+
   await saveTree();
   renderTree();
 }

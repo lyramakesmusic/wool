@@ -66,6 +66,107 @@ function setupCanvas() {
       saveUIState(); // Save after panning
     }
   });
+
+  // Touch events for mobile panning and pinch zoom
+  let initialPinchDistance = 0;
+  let initialPinchZoom = 1;
+  let pinchCenterX = 0;
+  let pinchCenterY = 0;
+  let isPinching = false;
+
+  function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function getTouchCenter(touches) {
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  }
+
+  // Single-finger panning - only starts on background
+  canvasBg.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1 && !isPinching) {
+      e.preventDefault();
+      isPanning = true;
+      const touch = e.touches[0];
+      panStartX = touch.clientX;
+      panStartY = touch.clientY;
+      startViewportX = appState.canvas.pan.x;
+      startViewportY = appState.canvas.pan.y;
+    }
+  }, { passive: false });
+
+  // Two-finger pinch zoom - works anywhere on canvas
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+      isPanning = false;
+      isPinching = true;
+      initialPinchDistance = getTouchDistance(e.touches);
+      initialPinchZoom = appState.canvas.zoom;
+      const center = getTouchCenter(e.touches);
+      pinchCenterX = center.x;
+      pinchCenterY = center.y;
+      startViewportX = appState.canvas.pan.x;
+      startViewportY = appState.canvas.pan.y;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && isPanning && !isPinching) {
+      const touch = e.touches[0];
+      const dx = touch.clientX - panStartX;
+      const dy = touch.clientY - panStartY;
+      appState.canvas.pan.x = startViewportX + dx;
+      appState.canvas.pan.y = startViewportY + dy;
+      updateViewport();
+    } else if (e.touches.length === 2 && isPinching && initialPinchDistance > 0) {
+      // Pinch zoom
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / initialPinchDistance;
+      const oldZoom = appState.canvas.zoom;
+      appState.canvas.zoom = Math.max(0.1, Math.min(5, initialPinchZoom * scale));
+
+      // Zoom toward pinch center
+      const rect = canvas.getBoundingClientRect();
+      const centerX = pinchCenterX - rect.left;
+      const centerY = pinchCenterY - rect.top;
+
+      const scaleDiff = appState.canvas.zoom - oldZoom;
+      if (oldZoom !== 0) {
+        appState.canvas.pan.x -= (centerX - appState.canvas.pan.x) * (scaleDiff / oldZoom);
+        appState.canvas.pan.y -= (centerY - appState.canvas.pan.y) * (scaleDiff / oldZoom);
+      }
+
+      updateViewport();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      isPanning = false;
+      isPinching = false;
+      initialPinchDistance = 0;
+      saveUIState();
+    } else if (e.touches.length === 1 && isPinching) {
+      // Went from 2 fingers to 1 - don't restart panning, just end pinch
+      isPinching = false;
+      initialPinchDistance = 0;
+    }
+  });
+
+  canvas.addEventListener('touchcancel', () => {
+    isPanning = false;
+    isPinching = false;
+    initialPinchDistance = 0;
+    saveUIState();
+  });
 }
 
 function updateViewport() {
